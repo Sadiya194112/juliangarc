@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Distance Calculation</title>
+  </head>
+  <body>
+    {% if error %}
+    <p style="color: red">{{ error }}</p>
+    {% else %}
+    <h1>Distance from {{ origin }} to {{ destination }}</h1>
+    <p>Distance: {{ distance }}</p>
+    <p>Duration: {{ duration }}</p>
+    <p>Distance in meters: {{ distance_meters }}</p>
+    {% endif %}
+  </body>
+</html>

@@ -1,0 +1,102 @@
+# ==========================
+# 🐍 Python Cache Files
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================
+# 🧩 Django Specific
+# ==========================
+*.log
+*.pot
+db.sqlite3
+db.sqlite3-journal
+
+# Media and static files
+/media/
+staticfiles/
+static/
+
+# ==========================
+# 🔐 Environment & Secrets
+# ==========================
+.env
+*.env
+.env.*
+venv/
+ENV/
+
+# ==========================
+# 🧠 IDE / Editor Settings
+# ==========================
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ==========================
+# 🗃️ Migrations (optional)
+# ** Ignore all migrations except __init__.py **
+# ==========================
+*/migrations/*
+!*/migrations/__init__.py
+
+# ==========================
+# ⚙️ Compiled / Build Files
+# ==========================
+*.so
+*.dll
+*.dylib
+*.pyd
+*.spec
+build/
+dist/
+
+# ==========================
+# 🧪 Testing & Coverage
+# ==========================
+.coverage
+.tox/
+htmlcov/
+.junit/
+nosetests.xml
+coverage.xml
+
+# ==========================
+# 🚀 Deployment / Logs
+# ==========================
+*.pid
+*.seed
+*.out
+*.gz
+*.log.*
+.DS_Store
+
+# ==========================
+# 🐳 Docker
+# ==========================
+docker-compose.override.yml
+.docker/
+.dockerignore
+
+# ==========================
+# 🦄 Gunicorn / Celery / uWSGI
+# ==========================
+gunicorn.error.log
+gunicorn.access.log
+celerybeat-schedule
+celerybeat.pid
+uwsgi.ini
+uwsgi.pid
+uwsgi.socket
+
+# ==========================
+# 🧠 Scripts
+# ==========================
+scripts/epoch.py
