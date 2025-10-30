@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import *
+from apps.common.views import get_privacy_policy, get_terms_conditions, support 
 
 
 urlpatterns = [

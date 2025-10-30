@@ -1,12 +1,45 @@
-# import stripe
-# from rest_framework import status
-# from rest_framework.response import Response
-# from rest_framework.permissions import IsAuthenticated
-# from apps.host.models import ChargingStation, ChargerDetail
-# from rest_framework_simplejwt.authentication import JWTAuthentication
-# from apps.host.serializers import ChargingStationSerializer, ChargerDetailSerializer
-# from rest_framework.decorators import api_view, authentication_classes, permission_classes
-# from django.db.models import Q
+import stripe
+from django.db.models import Q
+from rest_framework import status
+from rest_framework.response import Response
+from drf_yasg.utils import swagger_auto_schema
+from apps.host.models import ChargingStation, Charger
+from rest_framework.permissions import IsAuthenticated
+from apps.host.serializers import ChargerCreateSerializer, ChargerSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
+
+
+
+@swagger_auto_schema(method='post', request_body=ChargerCreateSerializer, tags=['Booking'])
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+# @parser_classes([MultiPartParser, FormParser])
+def add_charger(request):
+    serializer = ChargerCreateSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        charger = serializer.save()
+        return Response({
+            "message": "Charger added successfully.",
+            "charger_id": charger.id,
+            "station": charger.station.station_name,
+            "extended_price_example": f"{charger.extended_price_per_unit} per {charger.extended_time_unit} unit"
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@swagger_auto_schema(method='get', request_body=ChargerSerializer, tags=['Charger'])
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def chargers_list(request):
+    chargers = Charger.objects.select_related('charger_type', 'station').prefetch_related('plug_types', 'connector_types')
+    serializer = ChargerSerializer(chargers, many=True)
+    return Response(serializer.data, status=200)
+
 
 
 # @api_view(['GET'])
@@ -99,23 +132,23 @@
 
 
 
-# @api_view(['PATCH'])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
-# def change_status(request):
-#     """
-#     PATCH → change charger status
-#     """
-#     charger_id = request.data.get('charger_id')
-#     new_status = request.data.get('status')
+@api_view(['PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def change_status(request):
+    """
+    PATCH → change charger status
+    """
+    charger_id = request.data.get('charger_id')
+    new_status = request.data.get('status')
 
-#     try:
-#         charger = ChargerDetail.objects.get(id=charger_id, station__host=request.user)
-#     except ChargerDetail.DoesNotExist:
-#         return Response({'error': 'Charger not found'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        charger = ChargerDetail.objects.get(id=charger_id, station__host=request.user)
+    except ChargerDetail.DoesNotExist:
+        return Response({'error': 'Charger not found'}, status=status.HTTP_404_NOT_FOUND)
 
-#     charger.status = new_status
-#     charger.save()
+    charger.status = new_status
+    charger.save()
 
-#     serializer = ChargerDetailSerializer(charger)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
+    serializer = ChargerDetailSerializer(charger)
+    return Response(serializer.data, status=status.HTTP_200_OK)

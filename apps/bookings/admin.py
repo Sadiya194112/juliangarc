@@ -3,7 +3,7 @@
 
 # Register your models here.
 # class BookingAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'driver', 'host', 'status', 'charger__charger_level', 'start_datetime', 'end_datetime')
+#     list_display = ('id', 'driver', 'host', 'status', 'charger__name', 'start_datetime', 'end_datetime')
 #     list_filter = ('status', 'created_at')
 #     readonly_fields = ('created_at', 'updated_at')  
 

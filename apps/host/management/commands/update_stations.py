@@ -1,7 +1,8 @@
 import googlemaps
 from django.conf import settings
-from apps.host.models import ChargingStation
 from django.core.management.base import BaseCommand
+from django.utils import timezone
+from apps.host.models import ChargingStation
 
 class Command(BaseCommand):
     help = "Fetch charging stations from Google Maps and store/update in DB"
@@ -36,20 +37,20 @@ class Command(BaseCommand):
                 address = place.get('vicinity')
                 lat = place['geometry']['location']['lat']
                 lng = place['geometry']['location']['lng']
-                place_id = place.get('place_id')  
-
+                place_id = place.get('place_id')
 
                 ChargingStation.objects.update_or_create(
                     google_place_id=place_id,
                     defaults={
-                        'name': name,
+                        'station_name': name,
                         'address': address,
                         'latitude': lat,
                         'longitude': lng,
-                        'host_id': 1,
-                        'location_name': address or name,
+                        'host_id': 1,  # Ensure user with id=1 exists
+                        'location_area': address or name,
+                        'status': 'OP',
+                        'updated_at': timezone.now()
                     }
                 )
-
 
         self.stdout.write(self.style.SUCCESS("✅ USA Charging Stations updated successfully"))

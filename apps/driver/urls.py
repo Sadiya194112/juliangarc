@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import *
 from apps.driver.irin_views import contact_us
+from apps.driver.views import vehicle_list, plug_type_list, add_user_vehicle, user_vehicle_list, user_vehicle_detail, user_vehicle_update, user_vehicle_delete, nearby_stations
 
 
 urlpatterns = [
@@ -15,6 +15,7 @@ urlpatterns = [
     path('user-vehicles/<int:pk>/update/', user_vehicle_update, name='user-vehicle-update'),
     path('user-vehicles/<int:pk>/delete/', user_vehicle_delete, name='user-vehicle-delete'),
     path('stations/nearby/', nearby_stations, name='nearby-stations'),
+    # path('station/<int:pk>/nearby/', nearby_station_detail, name='nearby-station-detail'),
     path('contact-us/', contact_us, name='contact-us'),
 
 ]

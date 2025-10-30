@@ -190,18 +190,18 @@ class Review(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Review by {self.reviewer.full_name} for {self.charging_station.location_name} - {self.rating}⭐"
+        return f"Review by {self.reviewer.full_name} for {self.charging_station.station_name} - {self.rating}⭐"
 
 
-class ReviewImage(models.Model):
-    review = models.ForeignKey(
-        Review,
-        on_delete=models.CASCADE,
-        related_name='images'
-    )
-    image = models.ImageField(upload_to='review_images/')
+# class ReviewImage(models.Model):
+#     review = models.ForeignKey(
+#         Review,
+#         on_delete=models.CASCADE,
+#         related_name='images'
+#     )
+#     image = models.ImageField(upload_to='review_images/')
 
-    created_at = models.DateTimeField(auto_now_add=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Image for review {self.review.id}"
+#     def __str__(self):
+#         return f"Image for review {self.review.id}"

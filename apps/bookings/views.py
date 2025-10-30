@@ -85,7 +85,7 @@ def create_booking(request):
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser])
+# @parser_classes([MultiPartParser, FormParser])
 def submit_review(request):
     """
     Submit a review with multiple images for a charging station.

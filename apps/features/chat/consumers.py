@@ -18,11 +18,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         chat_room = await self.get_chat(chat_id)
-
-        if not await self.has_permission(user, chat_room):
+        if not chat_room:
             await self.close()
             return
-
+        
         self.chat_id = chat_id
         self.room_group_name = f"chat_{chat_id}"
 
@@ -39,17 +38,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         user = self.scope["user"]
-        
-        # Leave room group
-        await self.channel_layer.group_discard(
+
+        # Only proceed if room_group_name exists
+        if hasattr(self, "room_group_name"):
+            # Leave room group
+            await self.channel_layer.group_discard(
                 self.room_group_name,
                 self.channel_name
             )
-        
-        await self.set_user_offline(user)
-        
-        # Notify others
-        await self.broadcast_status(user, False)
+            
+            await self.set_user_offline(user)
+            
+            # Notify others
+            await self.broadcast_status(user, False)
+
 
     async def receive(self, text_data: str):
         if not text_data:

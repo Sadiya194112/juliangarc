@@ -2,12 +2,12 @@ import requests
 from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
-from .models import *
+from apps.driver.models import Vehicle, PlugType, UserVehicle
 from apps.driver.utils import calculate_distance
 from rest_framework.permissions import IsAuthenticated
 from apps.host.models import ChargingStation, Charger
-from apps.host.serializers import ChargingStationSerializer
-from apps.driver.serializers import *
+from apps.host.serializers import ChargingStationSerializer, ChargerSerializer
+from apps.driver.serializers import VehicleSerializer, UserVehicleSerializer, PlugTypeSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from django.db.models import Q
@@ -239,3 +239,15 @@ def nearby_stations(request):
         response_data.append(data_item)
 
     return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def chargers_list(request):
+    chargers = Charger.objects.select_related('charger_type', 'station').prefetch_related('plug_types', 'connector_types')
+    serializer = ChargerSerializer(chargers, many=True)
+    return Response(serializer.data, status=200)
+

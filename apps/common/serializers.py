@@ -1,21 +1,20 @@
 from rest_framework import serializers
-from .models import *
+from apps.common.models import PrivacyPolicy, TermsConditions, HelpSupport
 
 
 # Create your serializers here.
 class PrivacyPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = PrivacyPolicy
-        fields = "__all__"
+        fields = ['id', 'content']
 
 
 class TermsConditionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TermsConditions
-        fields = "__all__"
-
+        fields = ['id', 'content']
 
 class SupportSerializer(serializers.ModelSerializer):
     class Meta:
         model = HelpSupport
-        fields = "__all__"
+        fields = ['name', 'email', 'subject', 'message']
