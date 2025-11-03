@@ -7,18 +7,17 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
+            'station',
             'charger',
-            'start_datetime',
-            'end_datetime',
-            # 'vehicle_info',
-            # 'special_instructions',
-            'booking_type',
+            'booking_date',
+            'start_time',
+            'end_time'
         ]
         
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
-        fields = ['id', 'driver', 'host', 'subtotal', 'platform_fee', 'total_amount', 'is_paid', 'payment_date']
+        fields = ['id', 'user', 'subtotal', 'platform_fee', 'total_amount', 'is_paid', 'payment_date']
         
 
 class ReviewSerializer(serializers.ModelSerializer):

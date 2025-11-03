@@ -26,6 +26,7 @@ class Booking(models.Model):
 
     # Booking details
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    is_confirmed = models.BooleanField(default=False)
     booking_date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -39,20 +40,23 @@ class Booking(models.Model):
     # Payment
     stripe_payment_intent_id = models.CharField(max_length=255, blank=True, null=True)
     is_paid = models.BooleanField(default=False)
-    payment_date = models.DateTimeField(null=True, blank=True)
+    payment_date = models.DateField(null=True, blank=True)
 
     # Tracking
     check_in_time = models.DateTimeField(null=True, blank=True)
     check_out_time = models.DateTimeField(null=True, blank=True)
     actual_duration = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
 
     class Meta:
         ordering = ['-created_at']
         unique_together = ('charger', 'booking_date', 'start_time', 'end_time')
+        indexes = [
+            models.Index(fields=['charger', 'booking_date', 'start_time', 'end_time'])
+        ]
 
     def __str__(self):
         return f"Booking #{self.id} - {self.user.get_full_name()} on {self.booking_date} ({self.start_time}-{self.end_time})"

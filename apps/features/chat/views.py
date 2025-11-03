@@ -65,6 +65,44 @@ def get_messages(request, chat_id):
     return Response(serializer.data)
 
 
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def driver_host_chat_list(request):
+    user = request.user
+
+    # Driver joto host er sathe chat koreche (AI chat chara)
+    chats = (
+        ChatRoom.objects
+        .filter(driver=user, is_ai_chat=False)
+        .select_related('host')
+        .order_by('host_id')  # group-ish
+    )
+
+    result = []
+
+    for chat in chats:
+        last_msg = chat.messages.order_by('-timestamp').first()
+        host = chat.host
+        
+        result.append({
+            "chat_room_id": chat.id,
+            "host": {
+                "id": host.id,
+                "name": host.full_name,
+                "email": host.email,
+                "profile_image": host.profile_image.url if hasattr(host, "profile_image") and host.profile_image else None,
+            },
+            "last_message": last_msg.text if last_msg else None,
+            "last_message_time": last_msg.timestamp if last_msg else None
+        })
+
+    return Response({"hosts": result}, status=status.HTTP_200_OK)
+
+
+
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -113,3 +151,8 @@ def ai_chat(request):
     
     serializer = MessageSerializer([user_message, ai_message], many=True)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+
+

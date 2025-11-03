@@ -1,11 +1,12 @@
-import stripe
 from django.db.models import Q
 from rest_framework import status
+from apps.bookings.models import Booking
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from apps.host.models import ChargingStation, Charger
 from rest_framework.permissions import IsAuthenticated
-from apps.host.serializers import ChargerCreateSerializer, ChargerSerializer
+from apps.bookings.serializers import BookingSerializer
+from apps.host.serializers import ChargerCreateSerializer, ChargerSerializer, ChargingStationSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
@@ -42,27 +43,73 @@ def chargers_list(request):
 
 
 
-# @api_view(['GET'])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
-# def charging_station_list(request):
-#     """
-#     List all charging stations with optional search support.
-#     """
-#     queryset = ChargingStation.objects.all()
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def charging_station_list(request):
+    """
+    List all charging stations with optional search support.
+    """
+    queryset = ChargingStation.objects.all()
 
-#     # ---- SEARCH ----
-#     search_query = request.GET.get('search')
-#     if search_query:
-#         queryset = queryset.filter(
-#             Q(station_name__icontains=search_query) |
-#             Q(location_area__icontains=search_query) |
-#             Q(address__icontains=search_query) |
-#             Q(host__full_name__icontains=search_query)
-#         )
+    # ---- SEARCH ----
+    search_query = request.GET.get('search')
+    if search_query:
+        queryset = queryset.filter(
+            Q(station_name__icontains=search_query) |
+            Q(location_area__icontains=search_query) |
+            Q(address__icontains=search_query) |
+            Q(host__full_name__icontains=search_query)
+        )
 
-#     serializer = ChargingStationSerializer(queryset, many=True, context={'request': request})
-#     return Response(serializer.data)
+    serializer = ChargingStationSerializer(queryset, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def host_booking_list(request):
+    user = request.user
+    
+    if user.role != 'host':
+        return Response({'error': 'Only hosts can see booking lists.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    # ✅ স্টেশনগুলো পাই
+    stations = ChargingStation.objects.filter(host=user)
+    
+    # ✅ স্টেশনগুলোর সব বুকিং পাই
+    bookings = Booking.objects.filter(station__in=stations).order_by('-created_at')
+    
+    serializer = BookingSerializer(bookings, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def change_status(request):
+    """
+    PATCH → change charger status
+    """
+    charger_id = request.data.get('charger_id')
+    new_status = request.data.get('status')
+
+    try:
+        charger = Charger.objects.get(id=charger_id, station__host=request.user)
+    except Charger.DoesNotExist:
+        return Response({'error': 'Charger not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    charger.status = new_status
+    charger.save()
+
+    serializer = ChargerSerializer(charger)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 
 # @api_view(['GET', 'POST'])
@@ -132,23 +179,3 @@ def chargers_list(request):
 
 
 
-@api_view(['PATCH'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def change_status(request):
-    """
-    PATCH → change charger status
-    """
-    charger_id = request.data.get('charger_id')
-    new_status = request.data.get('status')
-
-    try:
-        charger = ChargerDetail.objects.get(id=charger_id, station__host=request.user)
-    except ChargerDetail.DoesNotExist:
-        return Response({'error': 'Charger not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    charger.status = new_status
-    charger.save()
-
-    serializer = ChargerDetailSerializer(charger)
-    return Response(serializer.data, status=status.HTTP_200_OK)

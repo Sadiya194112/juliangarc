@@ -1,13 +1,16 @@
-# from django.contrib import admin
-# from apps.bookings.models import Booking, Review, ReviewImage
+from django.contrib import admin
+from apps.bookings.models import Booking
 
 # Register your models here.
-# class BookingAdmin(admin.ModelAdmin):
-#     list_display = ('id', 'driver', 'host', 'status', 'charger__name', 'start_datetime', 'end_datetime')
-#     list_filter = ('status', 'created_at')
-#     readonly_fields = ('created_at', 'updated_at')  
+class BookingAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'station', 'charger', 'status', 'start_time', 'end_time', 'created_at')
+    list_filter = ('status', 'created_at', 'station', 'charger')
+    readonly_fields = ('created_at', 'updated_at')  
 
-# admin.site.register(Booking, BookingAdmin)  
+    search_fields = ('user__email', 'user__full_name', 'station__station_name', 'charger__name')
+
+admin.site.register(Booking, BookingAdmin)
+
 
 
 # class ReviewImageInline(admin.TabularInline):

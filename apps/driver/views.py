@@ -183,15 +183,24 @@ def chunks(lst, n):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def nearby_stations(request):
-    lat = float(request.query_params.get('latitude', 0))
-    lon = float(request.query_params.get('longitude', 0))
+
+    station_id = request.query_params.get('station_id', None)
+    lat = request.query_params.get('latitude', None)
+    lon = request.query_params.get('longitude', None)
     radius_km = float(request.query_params.get('radius', 50))
 
-    # Fetch all available stations
-    all_stations = list(ChargingStation.objects.filter())
+    # lat/lon must be provided for both nearby and station-specific mode
+    if lat is None or lon is None:
+        return Response({"error": "latitude and longitude are required"}, status=400)
+
+    lat = float(lat)
+    lon = float(lon)
+
+    # Fetch all stations first
+    all_stations = list(ChargingStation.objects.all())
     stations_with_info = []
 
-    # Break into chunks to avoid API limit
+    # Calculate distances in chunks
     for station_chunk in chunks(all_stations, 25):
         destinations = [f"{s.latitude},{s.longitude}" for s in station_chunk]
         origins = f"{lat},{lon}"
@@ -219,26 +228,54 @@ def nearby_stations(request):
                             "distance": round(distance_km, 2),
                             "time_to_reach": round(duration_min, 1)
                         })
-        else:
-            print("Google Distance Matrix API returned empty rows or error:", data)
 
     # Sort by distance
     stations_with_info.sort(key=lambda x: x["distance"])
 
-    # Serialize station + details
-    serializer = ChargingStationSerializer(
-        [item["station"] for item in stations_with_info],
-        many=True
-    )
+    # ✅ If station_id is passed, return only that station (if inside radius list)
+    if station_id:
+        matched = next((s for s in stations_with_info if str(s["station"].id) == station_id), None)
 
-    # Merge extra fields (distance, time)
+        if not matched:
+            return Response({"error": "Station not found within the specified radius"}, status=404)
+
+        station = matched["station"]
+
+        # Serialize station
+        serializer = ChargingStationSerializer(station)
+        data = serializer.data
+        data["distance_km"] = matched["distance"]
+        data["time_to_reach_min"] = matched["time_to_reach"]
+
+        # ✅ Include charger details
+        chargers = Charger.objects.filter(station=station).select_related('charger_type').prefetch_related('plug_types', 'connector_types')
+
+        data["chargers"] = [{
+            "id": c.id,
+            "name": c.name,
+            "charger_type": c.charger_type.name if c.charger_type else None,
+            "mode": c.mode,
+            "price": c.price,
+            "available": c.available,
+            # "extended_time_unit": c.extended_time_unit,
+            # "extended_price_per_unit": c.extended_price_per_unit,
+            "plug_types": [p.name for p in c.plug_types.all()],
+            "connector_types": [c2.name for c2 in c.connector_types.all()],
+        } for c in chargers]
+
+        return Response(data, status=200)
+
+    # ✅ Otherwise return the full nearby list
+    serializer = ChargingStationSerializer([i["station"] for i in stations_with_info], many=True)
+
     response_data = []
     for data_item, extra in zip(serializer.data, stations_with_info):
         data_item["distance_km"] = extra["distance"]
         data_item["time_to_reach_min"] = extra["time_to_reach"]
         response_data.append(data_item)
 
-    return Response(response_data, status=status.HTTP_200_OK)
+    return Response(response_data, status=200)
+
 
 
 

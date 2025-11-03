@@ -33,15 +33,8 @@ class ChargingStationAdmin(admin.ModelAdmin):
 
 
 
-# class ChargerDetailAdmin(admin.ModelAdmin):
-#     list_display = ['id', 'station_id_display', 'station', 'charger_type', 'charger_level', 'price_per_hour', 'price_per_kwh', 'available', 'available_24_7', 'available_days', 'extended_charging_options', 'image']
+@admin.register(Charger)
+class ChargerAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'station__id', 'station', 'charger_type', 'mode', 'price']
     
-#     def station_id_display(self, obj):
-#         return obj.station.id  
-
-#     station_id_display.short_description = 'Station ID' 
-# admin.site.register(ChargerDetail, ChargerDetailAdmin)
-
-
 admin.site.register(ChargerType)
-admin.site.register(Charger)
