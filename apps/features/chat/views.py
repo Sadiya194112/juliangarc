@@ -72,33 +72,32 @@ def get_messages(request, chat_id):
 def driver_host_chat_list(request):
     user = request.user
 
-    # Driver joto host er sathe chat koreche (AI chat chara)
-    chats = (
-        ChatRoom.objects
-        .filter(driver=user, is_ai_chat=False)
-        .select_related('host')
-        .order_by('host_id')  # group-ish
-    )
+    # Get all chats between the driver and hosts (AI chat excluded)
+    chats = ChatRoom.objects.filter(driver=user, is_ai_chat=False).select_related('host').prefetch_related('messages')
 
     result = []
-
+    
     for chat in chats:
         last_msg = chat.messages.order_by('-timestamp').first()
+
         host = chat.host
-        
+        host_info = {
+            "id": host.id,
+            "name": host.full_name,
+            "email": host.email,
+            "profile_image": host.picture.url if host.picture else None,  
+        }
+
+        # Prepare chat data
         result.append({
             "chat_room_id": chat.id,
-            "host": {
-                "id": host.id,
-                "name": host.full_name,
-                "email": host.email,
-                "profile_image": host.profile_image.url if hasattr(host, "profile_image") and host.profile_image else None,
-            },
+            "host": host_info,
             "last_message": last_msg.text if last_msg else None,
-            "last_message_time": last_msg.timestamp if last_msg else None
+            "last_message_time": last_msg.timestamp if last_msg else None,
         })
 
-    return Response({"hosts": result}, status=status.HTTP_200_OK)
+    return Response({"chats": result}, status=status.HTTP_200_OK)
+
 
 
 

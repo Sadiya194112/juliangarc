@@ -12,7 +12,7 @@ admin.site.register(ChatRoom, ChatRoomAdmin)
 
 class MessageAdmin(admin.ModelAdmin):
     list_display = ('id', 'sender', 'text', 'timestamp')
-    search_fields = ('sender__username', 'text')
+    # search_fields = ('sender__username', 'text')
     list_filter = ('timestamp',)   
 
 admin.site.register(Message, MessageAdmin)

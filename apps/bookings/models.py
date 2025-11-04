@@ -8,7 +8,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.host.models import ChargingStation
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
-
+from apps.driver.models import PlugType
 
 class Booking(models.Model):
     STATUS_CHOICES = (
@@ -23,6 +23,8 @@ class Booking(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     station = models.ForeignKey(ChargingStation, on_delete=models.CASCADE)
     charger = models.ForeignKey(Charger, on_delete=models.CASCADE)
+    plug = models.ForeignKey(PlugType, on_delete=models.PROTECT, related_name='bookings', null=True, blank=True)
+
 
     # Booking details
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')

@@ -34,6 +34,7 @@ def create_booking(request):
 
     charger = serializer.validated_data['charger']
     station = serializer.validated_data['station']  # ✅ instance directly
+    plug = serializer.validated_data['plug']
 
     if not charger.available or not charger.is_active:
         return Response({'error': 'Charger not available.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -63,6 +64,7 @@ def create_booking(request):
         user=user,
         station=station,
         charger=charger,
+        plug=plug,
         hourly_rate=charger.price,
         payment_date=booking_date,
         status='pending'

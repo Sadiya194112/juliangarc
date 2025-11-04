@@ -1,5 +1,5 @@
 from django.contrib import admin
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking, Review
 
 # Register your models here.
 class BookingAdmin(admin.ModelAdmin):
@@ -11,6 +11,10 @@ class BookingAdmin(admin.ModelAdmin):
 
 admin.site.register(Booking, BookingAdmin)
 
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['id', 'charging_station', 'reviewer', 'rating', 'comment']
 
 
 # class ReviewImageInline(admin.TabularInline):

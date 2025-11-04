@@ -11,14 +11,16 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             'charger',
             'booking_date',
             'start_time',
-            'end_time'
+            'end_time',
+            'plug'
         ]
         
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
-        fields = ['id', 'user', 'subtotal', 'platform_fee', 'total_amount', 'is_paid', 'payment_date']
-        
+        fields = ['id', 'user', 'plug', 'subtotal', 'platform_fee', 'total_amount', 'is_paid', 'status', 'booking_date', 'payment_date']
+   
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,3 +47,75 @@ class ReviewSerializer(serializers.ModelSerializer):
             comment=validated_data.get('comment', ''),
         )
         return review
+
+
+
+
+   
+class BookingHostViewSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name')
+    vehicle_name = serializers.CharField(source='user.vehicles.first.vehicle.name')  # First vehicle of the user
+    charger_type = serializers.CharField(source='charger.charger_type')
+    plug_type = serializers.CharField(source='user.vehicles.first.selected_plug.name')  # Get the selected plug from the first vehicle of the user
+    booking_date = serializers.DateField()
+    status = serializers.CharField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    station_name = serializers.CharField(source='station.station_name')
+    location_area = serializers.CharField(source='station.location_area')
+    user_picture = serializers.ImageField(source='user.picture', read_only=True) 
+
+    class Meta:
+        model = Booking
+        fields = [
+            'id',
+            'user_name',
+            'user_picture',
+            'vehicle_name',
+            'charger_type',
+            'plug_type',
+            'booking_date',
+            'status',
+            'start_time',
+            'end_time',
+            'station_name',
+            'location_area'
+            
+        ]
+        
+    
+class BookingCompletedSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name')
+    user_picture = serializers.ImageField(source='user.picture', read_only=True) 
+
+    vehicle_name = serializers.CharField(source='user.vehicles.first.vehicle.name')  # First vehicle of the user
+    charger_type = serializers.CharField(source='charger.charger_type')
+    plug_type = serializers.CharField(source='user.vehicles.first.selected_plug.name')  # Get the selected plug from the first vehicle of the user
+    booking_date = serializers.DateField()
+    status = serializers.CharField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    station_name = serializers.CharField(source='station.station_name')
+    location_area = serializers.CharField(source='station.location_area')
+
+    reviews = ReviewSerializer(source='station.reviews', many=True, read_only=True)
+    
+    class Meta:
+        model = Booking
+        fields = [
+            'id',
+            'user_name',
+            'user_picture',
+            'vehicle_name',
+            'charger_type',
+            'plug_type',
+            'booking_date',
+            'status',
+            'start_time',
+            'end_time',
+            'station_name', 
+            'location_area',
+            'reviews'
+        ]
+
+

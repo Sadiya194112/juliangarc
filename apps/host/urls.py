@@ -1,5 +1,5 @@
 from django.urls import path
-from apps.host.views import add_charger, chargers_list, charging_station_list, host_booking_list
+from apps.host.views import add_charger, chargers_list, charging_station_list, host_booking_list, booking_status_update
 
 
 urlpatterns = [
@@ -7,7 +7,10 @@ urlpatterns = [
     path('my-chargers/', chargers_list, name='my_chargers'),
     path('stations/', charging_station_list, name='charging_station_list'),
     
-    path('bookings/', host_booking_list, name='host-bookings')
+    path('bookings/', host_booking_list, name='host-bookings'),
+    path('bookings/<int:pk>/status/', booking_status_update, name='booking-status-update'),
+    # path('booking-list/', user_booking_list, name='booking-list')
+
     
     # path('list-chargers/', list_chargers, name='list_chargers')
     # path('stations/<int:pk>/detail/', charging_station_detail, name='station_detail'),

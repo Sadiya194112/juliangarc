@@ -28,4 +28,7 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Message from {self.sender.full_name} at {self.timestamp}"
+        if self.sender:
+            return f"Message from {self.sender.full_name} at {self.timestamp}"
+        else:
+            return f"Message at {self.timestamp} (sender not available)"

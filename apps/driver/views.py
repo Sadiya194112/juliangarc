@@ -259,8 +259,8 @@ def nearby_stations(request):
             "available": c.available,
             # "extended_time_unit": c.extended_time_unit,
             # "extended_price_per_unit": c.extended_price_per_unit,
-            "plug_types": [p.name for p in c.plug_types.all()],
-            "connector_types": [c2.name for c2 in c.connector_types.all()],
+            "plug_types": [{"id": p.id, "name": p.name} for p in c.plug_types.all()],
+            "connector_types": [{"id": c2.id, "name": c2.name} for c2 in c.connector_types.all()],
         } for c in chargers]
 
         return Response(data, status=200)
