@@ -84,6 +84,7 @@ class Charger(models.Model):
     charger_type = models.ForeignKey(ChargerType, on_delete=models.PROTECT, related_name='chargers')
     plug_types = models.ManyToManyField(PlugType, related_name='chargers')
     connector_types = models.ManyToManyField(ConnectorType, related_name='chargers')
+    power_rating = models.DecimalField(max_digits=6, decimal_places=2, default=7.5, help_text="Power rating in kW")
     extended_time_unit = models.DecimalField(max_digits=5, decimal_places=2, default=0.5, help_text="Extra hours or kWh unit")
     extended_price_per_unit = models.DecimalField(max_digits=6, decimal_places=2, default=10.0, help_text="Charge per extended unit")
 

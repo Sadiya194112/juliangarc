@@ -3,7 +3,7 @@ from apps.bookings.models import Booking, Review
 
 # Register your models here.
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'station', 'charger', 'status', 'start_time', 'end_time', 'created_at')
+    list_display = ('id', 'user', 'station', 'charger', 'status', 'is_paid', 'start_time', 'end_time', 'created_at')
     list_filter = ('status', 'created_at', 'station', 'charger')
     readonly_fields = ('created_at', 'updated_at')  
 

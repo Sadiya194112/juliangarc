@@ -74,7 +74,7 @@ class Payout(models.Model):
 
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
   
-    bookings = models.ManyToManyField('bookings.Booking', related_name='payouts')
+    bookings = models.ManyToManyField(Booking, related_name='payouts')
     
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -82,7 +82,7 @@ class Payout(models.Model):
     arrival_date = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
-        return f"Payout #{self.id} - {self.host.username} - ${self.amount}"
+        return f"Payout #{self.id} - {self.host.full_name} - ${self.amount}"
     
     
     

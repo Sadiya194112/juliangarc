@@ -2,13 +2,14 @@ from decimal import Decimal
 from django.db import models
 from datetime import timedelta
 from django.utils import timezone
-from apps.accounts.models import User
 from apps.host.models import Charger
-from django.core.validators import MinValueValidator, MaxValueValidator
-from apps.host.models import ChargingStation
-from datetime import datetime, timedelta
-from django.core.exceptions import ValidationError
+from apps.accounts.models import User
+from apps.driver.models import Vehicle
 from apps.driver.models import PlugType
+from datetime import datetime, timedelta
+from apps.host.models import ChargingStation
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Booking(models.Model):
     STATUS_CHOICES = (
@@ -16,6 +17,7 @@ class Booking(models.Model):
         ('confirmed', 'Confirmed'),
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
+        
         ('cancelled', 'Cancelled'),
     )
 
@@ -24,7 +26,7 @@ class Booking(models.Model):
     station = models.ForeignKey(ChargingStation, on_delete=models.CASCADE)
     charger = models.ForeignKey(Charger, on_delete=models.CASCADE)
     plug = models.ForeignKey(PlugType, on_delete=models.PROTECT, related_name='bookings', null=True, blank=True)
-
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.PROTECT, related_name='bookings')
 
     # Booking details
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
@@ -63,13 +65,6 @@ class Booking(models.Model):
     def __str__(self):
         return f"Booking #{self.id} - {self.user.get_full_name()} on {self.booking_date} ({self.start_time}-{self.end_time})"
 
-    @property
-    def duration(self):
-        """Duration of the booking in hours"""
-        start_dt = datetime.combine(self.booking_date, self.start_time)
-        end_dt = datetime.combine(self.booking_date, self.end_time)
-        delta = end_dt - start_dt
-        return Decimal(delta.total_seconds() / 3600)
 
     def clean(self):
         """Prevent overlapping bookings for the same charger"""
@@ -83,17 +78,6 @@ class Booking(models.Model):
 
         if overlapping.exists():
             raise ValidationError("This time slot is already booked for this charger.")
-
-    def save(self, *args, **kwargs):
-        # Ensure validation runs
-        self.clean()
-
-        # Calculate pricing
-        self.subtotal = self.hourly_rate * self.duration
-        self.platform_fee = self.subtotal * Decimal('0.15')  # 15% fee
-        self.total_amount = self.subtotal + self.platform_fee
-
-        super().save(*args, **kwargs)
 
     @property
     def can_be_cancelled(self):
@@ -156,20 +140,6 @@ class BookingExtension(models.Model):
     def __str__(self):
         return f"Extension for Booking #{self.booking.id} - {self.additional_hours}h"
 
-
-# class Review(models.Model):
-#     station = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='review')
-#     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
-#     reviewee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
-#     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])    
-#     comment = models.TextField(blank=True)
-#     image = models.ImageField(upload_to='review_images/', blank=True, null=True)
-    
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-    
-#     def __str__(self):
-#         return f"Review by {self.reviewer.full_name} for {self.reviewee.full_name} - {self.rating} stars"
 
 
 class Review(models.Model):

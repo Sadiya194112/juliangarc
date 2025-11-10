@@ -43,11 +43,11 @@ class UserAdmin(BaseUserAdmin):
     form = UserChangeForm
     add_form = UserCreationForm
 
-    list_display = ["id", "full_name", "email", "role", "phone", "picture", "stripe_customer_id", "terms_privacy", "is_active", "is_staff", "is_superuser"]
+    list_display = ["id", "full_name", "email", "role", "phone", "picture", "stripe_account_id", "stripe_customer_id", "terms_privacy", "is_active", "is_staff", "is_superuser"]
     list_filter = ["is_active", "is_staff", "is_superuser"]
     fieldsets = [
         (None, {"fields": ["email", "password"]}),
-        ("Personal info", {"fields": ["full_name", "role", "phone"]}),
+        ("Personal info", {"fields": ["full_name", "role", "phone", "stripe_account_id"]}),
         ("Permissions", {"fields": [ "is_active", "is_staff", "is_superuser", "groups", "user_permissions"]}),
     ]
     add_fieldsets = [
