@@ -62,8 +62,12 @@ def get_messages(request, chat_id):
 
     messages = chat.messages.all().order_by('timestamp')
     serializer = MessageSerializer(messages, many=True)
-    return Response(serializer.data)
-
+    return Response({
+        "chat_id": chat.id,
+        "driver": chat.driver.full_name,
+        "host": chat.host.full_name if chat.host else None,
+        "messages": serializer.data
+    })
 
 
 @api_view(['GET'])
@@ -98,6 +102,42 @@ def driver_host_chat_list(request):
 
     return Response({"chats": result}, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def driver_chat_list(request):
+    user = request.user
+
+    # Ensure the user is a host
+    if user.role != 'host':
+        return Response({'error': 'Only hosts can view driver chats.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Get all chat rooms where the current host is part of the conversation
+    chats = ChatRoom.objects.filter(host=user, is_ai_chat=False).select_related('driver').prefetch_related('messages')
+
+    result = []
+    
+    for chat in chats:
+        last_msg = chat.messages.order_by('-timestamp').first()
+
+        driver = chat.driver
+        driver_info = {
+            "id": driver.id,
+            "name": driver.full_name,
+            "email": driver.email,
+            "profile_image": driver.picture.url if driver.picture else None,
+        }
+
+        # Prepare chat data
+        result.append({
+            "chat_room_id": chat.id,
+            "driver": driver_info,
+            "last_message": last_msg.text if last_msg else None,
+            "last_message_time": last_msg.timestamp if last_msg else None,
+        })
+
+    return Response({"chats": result}, status=status.HTTP_200_OK)
 
 
 

@@ -182,9 +182,9 @@ def host_earnings_and_payouts(request):
     month_start = today.replace(day=1)
 
     # Earnings Overview
-    today_earnings = completed_bookings.filter(booking_date=today).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
-    week_earnings = completed_bookings.filter(booking_date__gte=week_start).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
-    month_earnings = completed_bookings.filter(booking_date__gte=month_start).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
+    today_earnings = completed_bookings.filter(payment_date=today).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
+    week_earnings = completed_bookings.filter(payment_date__gte=week_start).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
+    month_earnings = completed_bookings.filter(payment_date__gte=month_start).aggregate(Sum('subtotal'))['subtotal__sum'] or 0
 
     # Unpaid balance (not in any payout yet)
     unpaid_bookings = completed_bookings.filter(payouts__isnull=True)
@@ -229,6 +229,48 @@ def host_earnings_and_payouts(request):
 
 
 
+
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def remove_stripe_account(request):
+    """API to remove Stripe account for a specific user."""
+
+    # Validate input (user_id)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({"error": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Fetch the user based on user_id
+        user = User.objects.get(id=user_id)
+        
+        if not user.stripe_account_id:
+            return Response({"error": "No Stripe account found for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete the Stripe account
+        try:
+            stripe.Account.delete(user.stripe_account_id)
+            logger.info(f"Successfully deleted Stripe account for user: {user.email}")
+
+            # Clear the Stripe account ID and customer ID from the user profile
+            user.stripe_account_id = None
+            user.stripe_customer_id = None
+            user.save()
+
+            return Response({"message": "Stripe account removed successfully."}, status=status.HTTP_200_OK)
+
+        except stripe.error.StripeError as e:
+            # If there is an error with the Stripe API
+            logger.error(f"Error removing Stripe account for {user.email}: {e.user_message}")
+            return Response({"error": e.user_message or "Stripe API error."}, status=status.HTTP_400_BAD_REQUEST)
+
+    except User.DoesNotExist:
+        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

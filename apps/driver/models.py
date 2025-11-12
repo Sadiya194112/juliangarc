@@ -69,6 +69,8 @@ class UserVehicle(models.Model):
     selected_plug = models.ForeignKey(PlugType, on_delete=models.PROTECT)
     units_value = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     time_value = models.DurationField(default=timedelta(hours=1))
+    is_default = models.BooleanField(default=False)
+
 
     class Meta:
         unique_together = ('user', 'registration_number')

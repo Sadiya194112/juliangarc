@@ -6,10 +6,14 @@ from apps.features.chat.models import Message, ChatRoom
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
+    receiver = UserSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = ['id', 'chat', 'sender', 'text', 'image', 'location', 'timestamp']
+        fields = [
+            'id', 'chat', 'sender', 'receiver',
+            'text', 'image', 'location', 'is_from_ai', 'timestamp'
+        ]
     
     
 class ChatRoomSerializer(serializers.ModelSerializer):

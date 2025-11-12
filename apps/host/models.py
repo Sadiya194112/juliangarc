@@ -78,12 +78,14 @@ class Charger(models.Model):
         ('kwh', 'Per kWh'),
     )
     name = models.CharField(max_length=50)
+    is_default = models.BooleanField(default=False)
     scanner_code = models.CharField(max_length=36, unique=True, default=uuid.uuid4)
     scanner_image = models.ImageField(upload_to='charger_scanners/', blank=True, null=True)
     station = models.ForeignKey(ChargingStation, on_delete=models.CASCADE, related_name='chargers')
     charger_type = models.ForeignKey(ChargerType, on_delete=models.PROTECT, related_name='chargers')
     plug_types = models.ManyToManyField(PlugType, related_name='chargers')
     connector_types = models.ManyToManyField(ConnectorType, related_name='chargers')
+
     power_rating = models.DecimalField(max_digits=6, decimal_places=2, default=7.5, help_text="Power rating in kW")
     extended_time_unit = models.DecimalField(max_digits=5, decimal_places=2, default=0.5, help_text="Extra hours or kWh unit")
     extended_price_per_unit = models.DecimalField(max_digits=6, decimal_places=2, default=10.0, help_text="Charge per extended unit")

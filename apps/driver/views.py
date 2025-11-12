@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from apps.driver.models import Vehicle, PlugType, UserVehicle
 from apps.driver.utils import calculate_distance
 from rest_framework.permissions import IsAuthenticated
-from apps.host.models import ChargingStation, Charger
-from apps.host.serializers import ChargingStationSerializer, ChargerSerializer
+from apps.host.models import ChargingStation, Charger, ChargerType
+from apps.host.serializers import ChargingStationSerializer, ChargerSerializer, ChargerTypeSerializer
 from apps.driver.serializers import VehicleSerializer, UserVehicleSerializer, PlugTypeSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -81,7 +81,7 @@ def vehicle_list(request):
             Q(name__icontains=search_query) | Q(vehicle_type__icontains=search_query)
         )
     
-    serializer = VehicleSerializer(queryset, many=True)
+    serializer = VehicleSerializer(queryset, many=True, context={'request': request})
     return Response(serializer.data)
 
 
@@ -103,7 +103,16 @@ def plug_type_list(request):
 def add_user_vehicle(request):
     serializer = UserVehicleSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save(user=request.user)
+        is_default = request.data.get("is_default", False)
+        
+        if is_default:
+            UserVehicle.objects.filter(user=request.user).update(is_default=False)
+        
+        user_vehicle = serializer.save(user=request.user)
+
+        if is_default:
+            user_vehicle.is_default = True
+            user_vehicle.save()
         return Response({
             "message": "Vehicle added successfully",
             "data": serializer.data
@@ -288,3 +297,16 @@ def chargers_list(request):
     serializer = ChargerSerializer(chargers, many=True)
     return Response(serializer.data, status=200)
 
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_charger_types(request):
+    """
+    Get all Charger Types.
+    """
+    charger_types = ChargerType.objects.all()  
+    serializer = ChargerTypeSerializer(charger_types, many=True)  
+    return Response(serializer.data, status=status.HTTP_200_OK)

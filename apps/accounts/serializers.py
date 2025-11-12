@@ -3,42 +3,9 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from apps.accounts.models import User, Profile
 from apps.host.models import ChargingStation
+from apps.host.serializers import ChargingStationSerializer
 import datetime
 
-
-
-# class UserRegistrationSerializer(serializers.ModelSerializer):
-#     password = serializers.CharField(write_only=True, min_length=8)
-#     confirm_password = serializers.CharField(write_only=True, min_length=8)
-#     role = serializers.ChoiceField(choices=User.USER_TYPES)
-#     terms_privacy = serializers.BooleanField(required=True)
-
-#     class Meta:
-#         model = User
-#         fields = ['full_name', 'email', 'phone', 'role', 'password', 'confirm_password', 'terms_privacy']
-
-
-#     def validate_terms_privacy(self, value):
-#         if not value:
-#             raise serializers.ValidationError("You must agree to the Terms & Privacy Policy to continue.")
-#         return value
-    
-#     def validate(self, attrs):
-#         if attrs['password'] != attrs['confirm_password']:
-#             raise serializers.ValidationError("Passwords don't match")
-#         return attrs
-    
-#     def create(self, validated_data):
-#         validated_data.pop('confirm_password')
-#         password = validated_data.pop('password')
-#         user = User.objects.create_user(**validated_data)
-#         user.set_password(password)
-#         user.save()
-
-#         if user.role == 'driver':
-#             Profile.objects.create(user=user)
-        
-#         return user
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -160,10 +127,17 @@ class VerifyOTPSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    charging_station = ChargingStationSerializer(read_only=True)
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'phone', 'picture']
-
+        fields = ['id', 'full_name', 'email', 'phone', 'picture', 'charging_station']
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        
+        if instance.role == 'host':
+            representation['charging_station'] = ChargingStationSerializer(instance.charging_station).data
+        
+        return representation
 
 
 class ResetPasswordSerializer(serializers.Serializer):

@@ -1,7 +1,11 @@
 from django.urls import path
-from apps.accounts.views import *
+from apps.accounts.views import signup, login, logout, google_login, apple_login, forget_password, verify_otp, reset_password, change_password, user_profile, update_profile
+from apps.accounts.admin_dashboard import admin_site
+
 
 urlpatterns = [
+    path('admin/', admin_site.urls),
+
     path('signup/', signup, name='signup'),
     path('login/', login, name='login'),
     path('logout/', logout, name='logout'),

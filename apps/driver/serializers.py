@@ -37,14 +37,26 @@ class PlugTypeSerializer(serializers.ModelSerializer):
 # --- Vehicle Serializer ---
 class VehicleSerializer(serializers.ModelSerializer):
     supported_plugs = PlugTypeSerializer(many=True, read_only=True)
+    is_default = serializers.SerializerMethodField()
 
     class Meta:
         model = Vehicle
         fields = [
             'id', 'name', 'vehicle_type', 'battery_type',
             'units_per_time', 'supported_plugs',
-            'battery_capacity', 'charging_time', 'image'
+            'battery_capacity', 'charging_time', 'image', 'is_default'
         ]
+
+    def get_is_default(self, obj):
+        """
+        This method will return whether the vehicle is the default vehicle for the current user.
+        """
+        user = self.context['request'].user 
+        try:
+            user_vehicle = UserVehicle.objects.get(user=user, vehicle=obj)
+            return user_vehicle.is_default
+        except UserVehicle.DoesNotExist:
+            return False 
 
 
 class UserVehicleSerializer(serializers.ModelSerializer):
@@ -63,6 +75,8 @@ class UserVehicleSerializer(serializers.ModelSerializer):
     vehicle = serializers.PrimaryKeyRelatedField(
         queryset=Vehicle.objects.all(), required=False, allow_null=True
     )
+    is_default = serializers.BooleanField(default=False)
+
 
     class Meta:
         model = UserVehicle
@@ -72,7 +86,7 @@ class UserVehicleSerializer(serializers.ModelSerializer):
             'selected_plug', 'selected_plug_name',
             'units_value', 'time_value',
             'custom_vehicle_name', 'vehicle_type',
-            'battery_type', 'supported_plugs_custom'
+            'battery_type', 'supported_plugs_custom', 'is_default'
         ]
         read_only_fields = ['id', 'vehicle_details', 'selected_plug_name']
 
@@ -132,11 +146,11 @@ class UserVehicleSerializer(serializers.ModelSerializer):
             )
 
         return data
-
+    
+    
     def create(self, validated_data):
         custom_name = validated_data.pop('custom_vehicle_name', None)
 
-        # Custom vehicle creation
         if custom_name:
             plugs = validated_data.pop('supported_plugs_custom')
             vehicle = Vehicle.objects.create(
@@ -147,4 +161,14 @@ class UserVehicleSerializer(serializers.ModelSerializer):
             vehicle.supported_plugs.set(plugs)
             validated_data['vehicle'] = vehicle
 
-        return super().create(validated_data)
+        is_default = validated_data.get('is_default', False)
+        if is_default:
+            UserVehicle.objects.filter(user=validated_data['user']).update(is_default=False)
+        
+        user_vehicle = super().create(validated_data)
+
+        if is_default:
+            user_vehicle.is_default = True
+            user_vehicle.save()
+
+        return user_vehicle

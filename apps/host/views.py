@@ -1,16 +1,40 @@
+import stripe
+import logging
 from django.db.models import Q
 from rest_framework import status
+from apps.driver.models import PlugType
 from apps.bookings.models import Booking
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
-from apps.host.models import ChargingStation, Charger
+from apps.subscriptions.models import Subscription
 from rest_framework.permissions import IsAuthenticated
 from apps.host.utlis import create_booking_notification
 from rest_framework.parsers import MultiPartParser, FormParser
+from apps.host.models import ChargingStation, Charger, ConnectorType
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from apps.host.serializers import ChargerCreateSerializer, ChargerSerializer, ChargingStationSerializer
-from apps.bookings.serializers import BookingSerializer, BookingHostViewSerializer, BookingCompletedSerializer
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, parser_classes
+from apps.bookings.serializers import BookingSerializer, BookingHostViewSerializer, BookingCompletedSerializer
+from apps.host.serializers import ChargerCreateSerializer, ChargerSerializer, ChargingStationSerializer, PlugTypeSerializer, ConnectorTypeSerializer
+
+ 
+logger = logging.getLogger(__name__)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def plug_and_connector_types(request):
+    plug_types = PlugType.objects.all()
+    connector_types = ConnectorType.objects.all()
+
+    plug_serializer = PlugTypeSerializer(plug_types, many=True)
+    connector_serializer = ConnectorTypeSerializer(connector_types, many=True)
+
+    return Response({
+        "plug_types": plug_serializer.data,
+        "connector_types": connector_serializer.data
+    }, status=status.HTTP_200_OK)
+
 
 
 
@@ -20,9 +44,21 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 @permission_classes([IsAuthenticated])
 # @parser_classes([MultiPartParser, FormParser])
 def add_charger(request):
+    user = request.user
+
+    if user.role != 'host':
+        return Response({'error': 'Only hosts can add chargers.'}, status=status.HTTP_403_FORBIDDEN)
+
     serializer = ChargerCreateSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         charger = serializer.save()
+
+        is_default = request.data.get("is_default", False)
+        
+        if is_default:
+            Charger.objects.filter(station__host=user).update(is_default=False)
+            charger.is_default = True
+            charger.save()
         return Response({
             "message": "Charger added successfully.",
             "charger_id": charger.id,
@@ -73,6 +109,7 @@ def charging_station_list(request):
 @permission_classes([IsAuthenticated])
 def host_booking_list(request):
     user = request.user
+    
 
     # ✅ 1. শুধুমাত্র host-কে অনুমতি দাও
     if user.role != 'host':
@@ -164,6 +201,124 @@ def booking_status_update(request, pk):
     create_booking_notification(booking, status_value)
 
     return Response({'success': f'Booking {status_value} successfully.'}, status=status.HTTP_200_OK)
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def upcoming_reservations(request):
+    """
+    Get upcoming reservations (pending or confirmed) for the authenticated user.
+    Returns user/driver name, vehicle name, status, start time, end time, and booking date.
+    """
+    user = request.user
+
+    bookings = Booking.objects.filter(
+        station__host=user,
+        status__in=['pending', 'confirmed']  
+    ).select_related('user', 'vehicle').order_by('booking_date', 'start_time')
+
+    print(f"Bookings found for user {user.id}: {bookings.count()}") 
+
+    if not bookings.exists():
+        return Response({"message": "No upcoming reservations."}, status=status.HTTP_200_OK)
+
+    reservation_data = []
+
+    for booking in bookings:
+        reservation_data.append({
+            "booking_id": booking.id,                                           
+            "user_name": booking.user.full_name,
+            "vehicle_name": booking.vehicle.name,
+            "status": booking.status,
+            "start_time": booking.start_time.strftime("%I:%M %p"),                                          
+            "end_time": booking.end_time.strftime("%I:%M %p"),
+            "booking_date": booking.booking_date.strftime("%Y-%m-%d"),
+        })
+
+    return Response({"upcoming_reservations": reservation_data}, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def host_dashboard(request):
+    user = request.user
+
+    if user.role != 'host':
+        return Response({'error': 'Only hosts can access this dashboard.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Fetch Stripe Account Status
+    stripe_account_status = None
+    print("Stripe Account ID:", user.stripe_account_id)  # Log the account ID
+    if user.stripe_account_id:
+        try:
+            account = stripe.Account.retrieve(user.stripe_account_id)
+            # print("Full Account Info:", account)
+
+            stripe_account_status = account['charges_enabled']
+            print("Stripe Account Status:", stripe_account_status)  # Log the account status
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error retrieving account: {e}")
+            stripe_account_status = "Error retrieving account status"
+        except Exception as e:
+            logger.error(f"Unexpected error during account retrieval: {str(e)}")
+            stripe_account_status = "Error retrieving account status"
+    else:
+        logger.error("No Stripe account ID found for user.")
+        stripe_account_status = "No Stripe account linked"
+
+    # Get the active subscription plan for the host
+    active_subscription = Subscription.objects.filter(user=user, status='active').first()
+    if active_subscription:
+        current_plan = active_subscription.plan.name
+        next_billing_date = active_subscription.end_date
+    else:
+        current_plan = "No active plan"
+        next_billing_date = None
+
+    # Count active and inactive chargers for the host
+    station = ChargingStation.objects.filter(host=user).first()
+    if station:
+        active_chargers_count = Charger.objects.filter(station=station, is_active=True).count()
+        inactive_chargers_count = Charger.objects.filter(station=station, is_active=False).count()
+    else:
+        active_chargers_count = 0
+        inactive_chargers_count = 0
+
+    # Calculate average rating and review count for the host's charging station
+    if station:
+        total_reviews = station.reviews.count()
+        average_rating = station.average_rating
+    else:
+        total_reviews = 0
+        average_rating = 0
+
+    # Return the host's dashboard information
+    return Response({
+        "payment_setup": {
+            "stripe_status": (
+                "Verified" if stripe_account_status is True 
+                else "Not Verified" if stripe_account_status is False 
+                else "No Stripe account linked"
+            )
+        },
+        "subscription_plan": {
+            "current_plan": current_plan,
+            "next_billing_date": next_billing_date.strftime('%b %d, %Y') if next_billing_date else None,
+        },
+        "chargers": {
+            "active_chargers": active_chargers_count,
+            "inactive_chargers": inactive_chargers_count
+        },
+        "ratings_and_reviews": {
+            "average_rating": average_rating,
+            "total_reviews": total_reviews
+        }
+    }, status=status.HTTP_200_OK)
 
 
 

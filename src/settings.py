@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'apps.features.chat',
     'apps.subscriptions',
     
+    "crispy_forms",
+
     
 ]
 
@@ -201,3 +203,9 @@ STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 FRONTEND_URL = os.getenv('FRONTEND_URL')
 
 APPLE_CLIENT_ID=os.getenv("APPLE_CLIENT_ID")
+
+
+# Configure Crispy Forms 
+CRISPY_TEMPLATE_PACK = "unfold_crispy"
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]

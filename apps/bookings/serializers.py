@@ -54,16 +54,16 @@ class ReviewSerializer(serializers.ModelSerializer):
    
 class BookingHostViewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.get_full_name')
-    vehicle_name = serializers.CharField(source='user.vehicles.first.vehicle.name')  # First vehicle of the user
+    vehicle_name = serializers.SerializerMethodField()  # First vehicle of the user
     charger_type = serializers.CharField(source='charger.charger_type')
-    plug_type = serializers.CharField(source='user.vehicles.first.selected_plug.name')  # Get the selected plug from the first vehicle of the user
+    plug_type = serializers.SerializerMethodField()  # Get the selected plug from the user's vehicle
     booking_date = serializers.DateField()
     status = serializers.CharField()
     start_time = serializers.TimeField()
     end_time = serializers.TimeField()
     station_name = serializers.CharField(source='station.station_name')
     location_area = serializers.CharField(source='station.location_area')
-    user_picture = serializers.ImageField(source='user.picture', read_only=True) 
+    user_picture = serializers.ImageField(source='user.picture', read_only=True)
 
     class Meta:
         model = Booking
@@ -80,9 +80,25 @@ class BookingHostViewSerializer(serializers.ModelSerializer):
             'end_time',
             'station_name',
             'location_area'
-            
         ]
-        
+    
+    def get_vehicle_name(self, obj):
+        # Ensure vehicle exists before accessing its name
+        if obj.vehicle:
+            return obj.vehicle.name
+        return None  # If vehicle is None, return None or an appropriate fallback value
+    
+    def get_plug_type(self, obj):
+        # Check if the vehicle exists, then access the UserVehicle to get the selected_plug
+        if obj.vehicle:
+            # Get the first UserVehicle related to this vehicle and user
+            user_vehicle = obj.vehicle.uservehicle_set.filter(user=obj.user).first()
+            if user_vehicle and user_vehicle.selected_plug:
+                return user_vehicle.selected_plug.name  # Return the plug name
+        return None  # If no selected_plug or vehicle, return None or an appropriate fallback value
+
+
+    
     
 class BookingCompletedSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.get_full_name')

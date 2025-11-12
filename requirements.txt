@@ -26,6 +26,7 @@ cryptography==46.0.1
 daphne==4.2.1
 distro==1.9.0
 Django==5.2.6
+django-crispy-forms==2.5
 django-tinymce==5.0.0
 django-unfold==0.69.0
 djangorestframework==3.16.1

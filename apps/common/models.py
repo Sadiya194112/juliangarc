@@ -3,7 +3,6 @@ from tinymce.models import HTMLField
 from apps.accounts.models import User
 
 
-# Create your models here.
 class HelpSupport(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField()

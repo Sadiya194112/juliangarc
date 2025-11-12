@@ -1,16 +1,20 @@
 from django import forms
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from apps.accounts.models import User, Profile
 from django.core.exceptions import ValidationError
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
 
+
+# ----------------------------
+# Custom Forms
+# ----------------------------
+
 class UserCreationForm(forms.ModelForm):
     password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
-    password2 = forms.CharField(
-        label="Password confirmation", widget=forms.PasswordInput
-    )
+    password2 = forms.CharField(label="Confirm Password", widget=forms.PasswordInput)
 
     class Meta:
         model = User
@@ -20,7 +24,7 @@ class UserCreationForm(forms.ModelForm):
         password1 = self.cleaned_data.get("password1")
         password2 = self.cleaned_data.get("password2")
         if password1 and password2 and password1 != password2:
-            raise ValidationError("Passwords don't match")
+            raise ValidationError("Passwords do not match.")
         return password2
 
     def save(self, commit=True):
@@ -32,89 +36,130 @@ class UserCreationForm(forms.ModelForm):
 
 
 class UserChangeForm(forms.ModelForm):
-    password = ReadOnlyPasswordHashField()
+    password = ReadOnlyPasswordHashField(label="Hashed Password")
 
     class Meta:
         model = User
-        fields = ["full_name", "email", "password", "is_active", "is_staff", "is_superuser"]
+        fields = [
+            "full_name", "email", "password",
+            "is_active", "is_staff", "is_superuser"
+        ]
 
 
-class UserAdmin(BaseUserAdmin):
+# ----------------------------
+# User Admin
+# ----------------------------
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin, ModelAdmin):  # inherit unfold.ModelAdmin
     form = UserChangeForm
     add_form = UserCreationForm
 
-    list_display = ["id", "full_name", "email", "role", "phone", "picture", "stripe_account_id", "stripe_customer_id", "terms_privacy", "is_active", "is_staff", "is_superuser"]
-    list_filter = ["is_active", "is_staff", "is_superuser"]
-    fieldsets = [
-        (None, {"fields": ["email", "password"]}),
-        ("Personal info", {"fields": ["full_name", "role", "phone", "stripe_account_id"]}),
-        ("Permissions", {"fields": [ "is_active", "is_staff", "is_superuser", "groups", "user_permissions"]}),
+    list_display = [
+        "id", "full_name", "email", "role", "phone",
+        "stripe_account_id", "stripe_customer_id",
+        "is_active", "is_staff", "is_superuser"
     ]
+    list_filter = ["is_active", "is_staff", "is_superuser", "role"]
+    search_fields = ["email", "full_name", "phone"]
+    ordering = ["email"]
+    readonly_fields = ["stripe_account_id", "stripe_customer_id"]
+
+    # --- FIELD GROUPING ---
+    fieldsets = [
+        ("🧑 Basic Info", {"fields": ["full_name", "email", "password", "role", "phone"]}),
+        ("💳 Stripe Integration", {"fields": ["stripe_account_id", "stripe_customer_id"]}),
+        ("⚙️ Permissions", {"fields": ["is_active", "is_staff", "is_superuser", "groups", "user_permissions"]}),
+    ]
+
     add_fieldsets = [
         (
-            None,
+            "Create New User",
             {
                 "classes": ["wide"],
-                "fields": ["name", "email", "password1", "password2"],
+                "fields": ["full_name", "email", "password1", "password2"],
             },
         ),
     ]
-    search_fields = ["email"]
-    ordering = ["email"]
-    filter_horizontal = []
+
+    # --- UNFOLD CUSTOMIZATION ---
+    unfold_config = {
+        "list_display": {
+            "columns": [
+                {"name": "ID", "sortable": True},
+                {"name": "Full Name", "sortable": True},
+                {"name": "Email", "sortable": True},
+                {"name": "Role", "sortable": True},
+                {"name": "Phone", "sortable": False},
+                {"name": "Active", "sortable": True},
+                {"name": "Staff", "sortable": True},
+            ],
+            "search_enabled": True,
+        },
+        "edit_form": {
+            "title": "Edit User",
+            "layout": [
+                ("full_name", "email"),
+                ("role", "phone"),
+                ("is_active", "is_staff", "is_superuser"),
+                ("stripe_account_id", "stripe_customer_id"),
+            ],
+            "save_button": "Save Changes",
+        },
+        "buttons": [
+            {"name": "Add User", "icon": "plus", "url": "user:add"},
+            {"name": "Export Users", "icon": "download"},
+        ],
+    }
+
+    def unfold_ui_config(self):
+        return self.unfold_config
 
 
-
-admin.site.register(User, UserAdmin)
-
-
-
-
+# ----------------------------
+# Profile Admin
+# ----------------------------
 
 @admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
+class ProfileAdmin(ModelAdmin):
     list_display = ["id", "get_full_name", "get_email", "get_phone"]
+    search_fields = ["user__full_name", "user__email", "user__phone"]
 
     def get_full_name(self, obj):
         return obj.user.full_name
-    get_full_name.admin_order_field = "user__full_name"
     get_full_name.short_description = "Full Name"
+    get_full_name.admin_order_field = "user__full_name"
 
     def get_email(self, obj):
         return obj.user.email
-    get_email.admin_order_field = "user__email"
     get_email.short_description = "Email"
+    get_email.admin_order_field = "user__email"
 
     def get_phone(self, obj):
         return obj.user.phone
-    get_phone.admin_order_field = "user__phone"
     get_phone.short_description = "Phone"
+    get_phone.admin_order_field = "user__phone"
 
+    # --- UNFOLD CONFIGURATION ---
+    unfold_config = {
+        "list_display": {
+            "columns": [
+                {"name": "ID", "sortable": True},
+                {"name": "Full Name", "sortable": True},
+                {"name": "Email", "sortable": True},
+                {"name": "Phone", "sortable": True},
+            ],
+            "search_enabled": True,
+        },
+        "edit_form": {
+            "title": "Edit Profile",
+            "layout": [
+                ("user",),
+                ("profile_picture", "bio"),
+            ],
+            "save_button": "Save Profile",
+        },
+    }
 
-# @admin.register(HostProfile)
-# class HostAdmin(admin.ModelAdmin):
-#     list_display = [
-#         "id",
-#         "get_full_name",
-#         "get_email",
-#         "get_phone",
-#         "address",
-#         "city",
-#         "state",
-#         "zip_code"
-#     ]
-
-#     def get_full_name(self, obj):
-#         return obj.user.full_name
-#     get_full_name.admin_order_field = "user__full_name"
-#     get_full_name.short_description = "Full Name"
-
-#     def get_email(self, obj):
-#         return obj.user.email
-#     get_email.admin_order_field = "user__email"
-#     get_email.short_description = "Email"
-
-#     def get_phone(self, obj):
-#         return obj.user.phone
-#     get_phone.admin_order_field = "user__phone"
-#     get_phone.short_description = "Phone"
+    def unfold_ui_config(self):
+        return self.unfold_config

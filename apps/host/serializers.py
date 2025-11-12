@@ -6,106 +6,86 @@ from rest_framework import serializers
 from apps.accounts.models import User
 from django.core.files.base import ContentFile
 from apps.bookings.serializers import ReviewSerializer
-from apps.host.models import Charger, ChargingStation
 from rest_framework.exceptions import ValidationError
+from apps.driver.models import PlugType
+from apps.host.models import Charger, ChargingStation, ChargerType, ConnectorType
 
 
+class PlugTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlugType
+        fields = ['id', 'name']
 
-# class ChargerCreateSerializer(serializers.ModelSerializer):
-#     station_latitude = serializers.FloatField(write_only=True)
-#     station_longitude = serializers.FloatField(write_only=True)
-#     station_address = serializers.CharField(write_only=True)
-#     station_id = serializers.IntegerField(write_only=True)
-
-#     class Meta:
-#         model = Charger
-#         fields = [
-#             'id', 'name', 'charger_type', 'mode', 'price',
-#             'open_24_7', 'available', 'is_active',
-#             'extended_time_unit', 'extended_price_per_unit',
-#             'station_id', 'station_latitude', 'station_longitude', 'station_address',
-#         ]
-
-#     def create(self, validated_data):
-#         station_id = validated_data.pop('station_id')
-#         latitude = validated_data.pop('station_latitude')
-#         longitude = validated_data.pop('station_longitude')
-#         address = validated_data.pop('station_address')
-
-#         station = ChargingStation.objects.get(id=station_id)
-#         station.latitude = latitude
-#         station.longitude = longitude
-#         station.address = address
-#         station.save()
+class ConnectorTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConnectorType
+        fields = ['id', 'name']
         
-
-#         # scanner_code generate
-#         scanner_code = str(uuid.uuid4())
-#         validated_data['scanner_code'] = scanner_code
-
-#         charger = Charger.objects.create(station=station, **validated_data)
-
-#         qr = qrcode.QRCode(
-#             version=1,
-#             error_correction=qrcode.constants.ERROR_CORRECT_L,
-#             box_size=10,
-#             border=4,
-#         )
-#         qr.add_data(scanner_code)
-#         qr.make(fit=True)
-#         img = qr.make_image(fill_color="black", back_color="white")
-
-#         buffer = io.BytesIO()
-#         img.save(buffer, format='PNG')
-#         file_name = f'charger_qr_{charger.id}.png'
-#         charger.scanner_image.save(file_name, ContentFile(buffer.getvalue()), save=True)
-
-#         return charger
-
+        
 
 class ChargerCreateSerializer(serializers.ModelSerializer):
     station_latitude = serializers.FloatField(write_only=True)
     station_longitude = serializers.FloatField(write_only=True)
     station_address = serializers.CharField(write_only=True)
     station_id = serializers.IntegerField(write_only=True)
+    is_default = serializers.BooleanField(required=False)
+    plug_types = serializers.ListField(child=serializers.IntegerField(), required=False)
+    connector_types = serializers.ListField(child=serializers.IntegerField(), required=False)
 
     class Meta:
         model = Charger
         fields = [
             'id', 'name', 'charger_type', 'mode', 'price',
             'open_24_7', 'available', 'is_active',
-            'extended_time_unit', 'extended_price_per_unit',
-            'station_id', 'station_latitude', 'station_longitude', 'station_address',
+            'extended_time_unit', 'extended_price_per_unit', 'plug_types', 'connector_types',
+            'station_id', 'station_latitude', 'station_longitude', 'station_address', 'is_default'
         ]
 
     def create(self, validated_data):
         try:
-            # Step 1: Extract station details
+            # ✅ Step 1: Pop many-to-many fields before creating charger
+            plug_types = validated_data.pop('plug_types', [])
+            connector_types = validated_data.pop('connector_types', [])
+
+            # Step 2: Extract station details
             station_id = validated_data.pop('station_id')
             latitude = validated_data.pop('station_latitude')
             longitude = validated_data.pop('station_longitude')
             address = validated_data.pop('station_address')
 
-            # Step 2: Fetch the ChargingStation
+            # Step 3: Fetch the ChargingStation
             try:
                 station = ChargingStation.objects.get(id=station_id)
             except ChargingStation.DoesNotExist:
                 raise ValidationError(f"Charging Station with ID {station_id} does not exist.")
 
-            # Step 3: Update the ChargingStation with new details
+            # Step 4: Update station details
             station.latitude = latitude
             station.longitude = longitude
             station.address = address
             station.save()
 
-            # Step 4: Generate scanner code
+            # Step 5: Generate QR scanner code
             scanner_code = str(uuid.uuid4())
             validated_data['scanner_code'] = scanner_code
 
-            # Step 5: Create Charger instance
+            # ✅ Step 6: Create charger (now no M2M fields inside validated_data)
             charger = Charger.objects.create(station=station, **validated_data)
 
-            # Step 6: Generate QR Code for the charger
+            # ✅ Step 7: Add many-to-many relationships
+            if plug_types:
+                charger.plug_types.set(plug_types)
+            if connector_types:
+                charger.connector_types.set(connector_types)
+
+            # Step 8: Handle default charger
+            is_default = validated_data.get('is_default', False)
+            if is_default:
+                Charger.objects.filter(station=station).update(is_default=False)
+                charger.is_default = True
+                charger.save()
+
+            # Step 9: Generate and save QR Code
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -116,18 +96,16 @@ class ChargerCreateSerializer(serializers.ModelSerializer):
             qr.make(fit=True)
             img = qr.make_image(fill_color="black", back_color="white")
 
-            # Step 7: Save the QR code as an image
             buffer = io.BytesIO()
             img.save(buffer, format='PNG')
             file_name = f'charger_qr_{charger.id}.png'
             charger.scanner_image.save(file_name, ContentFile(buffer.getvalue()), save=True)
 
-            # Return the created charger
             return charger
 
         except Exception as e:
-            # Catch any other unexpected errors
             raise ValidationError(f"An error occurred: {str(e)}")
+
     
     
 
@@ -139,7 +117,7 @@ class ChargerSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "scanner_code", "scanner_image", "station",
             "charger_type", "plug_types", "connector_types",
-            "mode", "price", "available", "open_24_7", "is_active"
+            "mode", "price", "available", "open_24_7", "is_active", "is_default"
         ]
 
     # def get_qr_code(self, obj):
@@ -152,7 +130,12 @@ class ChargerSerializer(serializers.ModelSerializer):
     #     return f"data:image/png;base64,{img_str}"
 
 
-
+class ChargerTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChargerType
+        fields = ['id', 'name', 'description', 'voltage', 'amperage', 'is_fast_charge']
+        
+        
 
 class HostInfoSerializer(serializers.ModelSerializer):
     """Host basic info serializer (for nested field)"""

@@ -87,7 +87,10 @@ def create_booking(request):
         payment_date=booking_date,
         status='pending'
     )
-
+    print("User:", user.get_full_name())  
+    print("Host:", station.host.get_full_name()) 
+    print("Station:", station.station_name)
+    
     data = BookingSerializer(booking).data
     return Response(data, status=status.HTTP_201_CREATED)
 
