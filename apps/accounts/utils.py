@@ -28,13 +28,13 @@ def send_email(email):
         "",
         from_email,
         [email],
-        html_message=html_message,
         fail_silently=False,
+        html_message=html_message,
     )
-    user = User.objects.get(email=email)
-    user.otp = otp_code
-    user.otp_expiry = timezone.now() + timedelta(minutes=3)
-    user.save()
+    # user = User.objects.get(email=email)
+    # user.otp = otp_code
+    # user.otp_expiry = timezone.now() + timedelta(minutes=3)
+    # user.save()
 
     return otp_code
 
