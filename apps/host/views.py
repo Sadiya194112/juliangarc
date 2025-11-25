@@ -74,8 +74,17 @@ def add_charger(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def chargers_list(request):
-    chargers = Charger.objects.select_related('charger_type', 'station').prefetch_related('plug_types', 'connector_types')
+    user = request.user
+    if user.role != 'host':
+        return Response({'error': 'Only hosts can view chargers.'}, status=status.HTTP_403_FORBIDDEN)
+    
+    station = ChargingStation.objects.filter(host=user).first()
+    if not station:
+        return Response({'error': 'No charging station found for this host.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    chargers = Charger.objects.filter(station=station).select_related('charger_type', 'station').prefetch_related('plug_types', 'connector_types')
     serializer = ChargerSerializer(chargers, many=True)
+    
     return Response(serializer.data, status=200)
 
 

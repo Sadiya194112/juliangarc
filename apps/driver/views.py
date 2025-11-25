@@ -73,6 +73,7 @@ def vehicle_list(request):
     """
     List all Vehicles with optional search by 'name' or 'vehicle_type'.
     """
+    user = request.user
     search_query = request.query_params.get('search')
     queryset = Vehicle.objects.all()
     

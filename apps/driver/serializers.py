@@ -65,6 +65,8 @@ class UserVehicleSerializer(serializers.ModelSerializer):
 
     # Custom vehicle fields
     custom_vehicle_name = serializers.CharField(required=False, allow_blank=True)
+    custom_vehicle_image = serializers.ImageField(required=False)
+
     vehicle_type = serializers.ChoiceField(choices=Vehicle.VEHICLE_TYPES, required=False)
     battery_type = serializers.CharField(required=False, allow_blank=True)
     supported_plugs_custom = serializers.PrimaryKeyRelatedField(
@@ -85,7 +87,7 @@ class UserVehicleSerializer(serializers.ModelSerializer):
             'vehicle', 'vehicle_details',
             'selected_plug', 'selected_plug_name',
             'units_value', 'time_value',
-            'custom_vehicle_name', 'vehicle_type',
+            'custom_vehicle_name', 'vehicle_type', 'custom_vehicle_image',
             'battery_type', 'supported_plugs_custom', 'is_default'
         ]
         read_only_fields = ['id', 'vehicle_details', 'selected_plug_name']
@@ -152,11 +154,13 @@ class UserVehicleSerializer(serializers.ModelSerializer):
         custom_name = validated_data.pop('custom_vehicle_name', None)
 
         if custom_name:
+            image = validated_data.pop('custom_vehicle_image', None)
             plugs = validated_data.pop('supported_plugs_custom')
             vehicle = Vehicle.objects.create(
                 name=custom_name,
                 vehicle_type=validated_data.pop('vehicle_type'),
-                battery_type=validated_data.pop('battery_type')
+                battery_type=validated_data.pop('battery_type'),
+                image=image
             )
             vehicle.supported_plugs.set(plugs)
             validated_data['vehicle'] = vehicle

@@ -154,6 +154,13 @@ def get_booking_details(request, booking_id):
                 "plug_type": plug_type.name if plug_type else "N/A",
                 "booking_status": booking.status,
             },
+            "charger": {
+                "name": charger.name,
+                "scanner_code": charger.scanner_code,
+                "charger_type": charger.charger_type.name,
+                "plug_types": [pt.name for pt in charger.plug_types.all()],
+                "power_rating_kw": str(charger.power_rating),
+            },
             "charging_station": {
                 "station_name": charging_station.station_name,
                 "status": charging_station.status,
@@ -164,6 +171,7 @@ def get_booking_details(request, booking_id):
             "booking_details": {
                 "booking_id": booking.id,
                 "booking_date": str(booking_date),
+                "status": booking.status,
                 "charging_duration": f"{duration_hours:02d}:{duration_minutes:02d}:{duration_seconds:02d}",
                 "charging_session_timing": f"{start_time} - {end_time}",
             },

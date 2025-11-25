@@ -35,6 +35,7 @@ from datetime import timedelta
 # --- PlugType Model ---
 class PlugType(models.Model):
     name = models.CharField(max_length=50, unique=True)
+    image = models.ImageField(upload_to='plug_types/', blank=True, null=True)
     is_fast_charge = models.BooleanField(default=False)
 
     def __str__(self):

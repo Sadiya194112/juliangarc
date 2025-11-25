@@ -108,15 +108,21 @@ class ChargerCreateSerializer(serializers.ModelSerializer):
 
     
     
+class StationMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChargingStation
+        fields = ['id', 'station_name', 'address', 'latitude', 'longitude']
+
 
 class ChargerSerializer(serializers.ModelSerializer):
     # qr_code = serializers.SerializerMethodField()
+    station_details = StationMiniSerializer(source='station', read_only=True)
 
     class Meta:
         model = Charger
         fields = [
             "id", "name", "scanner_code", "scanner_image", "station",
-            "charger_type", "plug_types", "connector_types",
+            "charger_type", "plug_types", "connector_types", "station_details",
             "mode", "price", "available", "open_24_7", "is_active", "is_default"
         ]
 
