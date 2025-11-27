@@ -9,7 +9,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies including PostgreSQL client
+# Install system dependencies including PostgreSQL client and netcat
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -29,18 +29,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 COPY .env .env
 
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Expose backend port
 EXPOSE 8500
 
-# Final CMD: wait for Redis, wait for VPS PostgreSQL, migrate, collect static, run Daphne
-CMD /bin/bash -c "\
-    echo 'Waiting for Redis...' && \
-    until nc -z -v -w30 ${REDIS_HOST:-dokploy-redis} ${REDIS_PORT:-6379}; do echo 'Waiting for Redis...'; sleep 1; done && \
-    echo 'Waiting for VPS PostgreSQL...' && \
-    until nc -z -v -w30 ${DB_HOST} ${DB_PORT}; do echo 'Waiting for VPS Postgres...'; sleep 1; done && \
-    echo 'Running migrations...' && \
-    python manage.py migrate --noinput && \
-    echo 'Collecting static files...' && \
-    python manage.py collectstatic --noinput && \
-    echo 'Starting Daphne server...' && \
-    daphne -b 0.0.0.0 -p 8500 src.asgi:application"
+# Run entrypoint script
+CMD ["/app/entrypoint.sh"]
