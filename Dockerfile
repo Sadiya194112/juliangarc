@@ -31,8 +31,10 @@ COPY . .
 # Expose backend port
 EXPOSE 8500
 
-# Final command: wait for Redis, collect static files, start Daphne
+# Final command: wait for Redis, wait for PostgreSQL, migrate, collect static, run server
 CMD /bin/bash -c "\
-    until nc -z -v -w30 dokploy-redis 6379; do echo 'Waiting for Redis...'; sleep 1; done && \
+    echo 'Waiting for PostgreSQL...' && \
+    until nc -z -v -w30 $DB_HOST $DB_PORT; do echo 'Waiting for Postgres...'; sleep 1; done && \
+    python manage.py migrate && \
     python manage.py collectstatic --noinput && \
     daphne -b 0.0.0.0 -p 8500 src.asgi:application"
