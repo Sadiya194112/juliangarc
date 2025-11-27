@@ -171,7 +171,7 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
 
 # CSRF settings
-CSRF_TRUSTED_ORIGINS = ["https://api.89-116-157-176.sslip.io"] 
+CSRF_TRUSTED_ORIGINS = ["https://api.admin.dockploy.89.116.157.176.sslip.io"] 
 
 
 # Google Maps
