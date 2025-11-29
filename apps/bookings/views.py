@@ -164,6 +164,7 @@ def get_booking_details(request, booking_id):
             "charging_station": {
                 "station_name": charging_station.station_name,
                 "status": charging_station.status,
+                "image": charging_station.image.url if charging_station.image else None,
                 "open_time": str(charging_station.opening_time),
                 "close_time": str(charging_station.closing_time),
                 "rating": avg_rating,
@@ -365,6 +366,11 @@ def pay_for_booking(request):
             }],
             mode="payment",
             customer_email=request.user.email,
+            payment_intent_data={
+                "transfer_data": {
+                    "destination": booking.station.host.stripe_account_id 
+                }
+            },
             metadata={
                 "booking_id": booking.id,
                 "user_id": request.user.id,
