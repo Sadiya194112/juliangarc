@@ -79,6 +79,7 @@ def get_charging_history(request):
                 "vehicle_name": vehicle_name,
                 "plug_type": plug_type_name,
                 "station_name": booking.station.station_name,
+                "station_image": booking.station.image.url if booking.station.image else None,
                 "booking_date": booking.booking_date.strftime("%Y-%m-%d"),
                 "usage_kwh": f"{round(usage_kwh, 2)} kWh",
                 "price": f"{booking.total_amount} $"
@@ -132,6 +133,7 @@ def charging_history_detail(request, booking_id):
             "station_information": {
                 "operator": charging_station.host.get_full_name() if charging_station.host else "N/A",
                 "station_name": charging_station.station_name,
+                "station_image": charging_station.image.url if charging_station.image else None,
                 "rating": avg_rating,
                 "open_status": "Open" if charging_station.is_currently_open else "Closed",
                 "opening_time": charging_station.opening_time.strftime("%H:%M"),

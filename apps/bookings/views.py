@@ -347,9 +347,9 @@ def pay_for_booking(request):
         if booking.is_paid:
             return Response({"message": "This booking is already paid."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Convert the total amount to cents (Stripe expects the amount in the smallest unit, e.g., cents)
+        # Convert the total amount to cents
         amount = int(booking.total_amount * 100)
-        currency = "usd"  # You can change this to your preferred currency
+        currency = "usd"  
 
         # Create a Stripe Checkout session
         checkout_session = stripe.checkout.Session.create(
