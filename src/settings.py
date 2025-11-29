@@ -112,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
+# Internationalization settings
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
