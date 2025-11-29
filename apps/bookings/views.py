@@ -152,6 +152,7 @@ def get_booking_details(request, booking_id):
             "vehicle": {
                 "model": vehicle.name if vehicle else "N/A",
                 "plug_type": plug_type.name if plug_type else "N/A",
+                "plug_image": plug_type.image.url if plug_type and plug_type.image else None,
                 "booking_status": booking.status,
             },
             "charger": {
