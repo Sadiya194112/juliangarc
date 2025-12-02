@@ -192,19 +192,21 @@ class ChangePasswordSerializer(serializers.Serializer):
 class GoogleLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     full_name = serializers.CharField()
+    role = serializers.CharField()
     picture = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def create_or_get_user(self):
         email = self.validated_data["email"]
         full_name = self.validated_data["full_name"]
         picture = self.validated_data.get("picture", "")
+        role = self.validated_data.get("role")
 
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
                 'full_name': full_name,
                 'picture': picture,
-                'role': 'user'
+                'role': role
             }
         )
 
