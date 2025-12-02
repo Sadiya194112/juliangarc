@@ -203,10 +203,15 @@ class GoogleLoginSerializer(serializers.Serializer):
             email=email,
             defaults={
                 'full_name': full_name,
-                'picture': picture
+                'picture': picture,
+                'role': 'user'
             }
         )
 
+        # ❌ If existing user is HOST → block login
+        if user.role == "host":
+            raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
+        
         return user, created
     
     
