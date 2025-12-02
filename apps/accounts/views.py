@@ -244,48 +244,64 @@ def google_login(request):
 
 
 
-@swagger_auto_schema(method='post', request_body=AppleLoginSerializer, tags=['Auth'])
+@swagger_auto_schema(method='post', request_body=GoogleLoginSerializer, tags=['Auth'])
 @api_view(["POST"])
 def apple_login(request):
-    serializer = AppleLoginSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    id_token = serializer.validated_data["id_token"]
-
-    try:
-        decoded = verify_apple_token(id_token)
-    except Exception as e:
-        return Response(
-            {"detail": f"Invalid id_token: {str(e)}"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Extract user info
-    apple_sub = decoded.get("sub")
-    email = decoded.get("email")
-    name = decoded.get("name")
-
-    # Fallbacks if missing
-    if not email:
-        email = f"{apple_sub}@appleuser.com"
-    if not name:
-        name = f"AppleUser-{uuid.uuid4().hex[:6]}"
-
-    # Create or get user
-    user, created = User.objects.get_or_create(
-        email=email,
-        defaults={"name": name}
-    )
+    serializer = GoogleLoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user, created = serializer.create_or_get_user()
+        tokens = get_tokens_for_user(user)
+        return Response({
+            "message": "Login successful",
+            **tokens,
+            "data": UserSerializer(user).data
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    if created:
-        user.apple_id = apple_sub
-        user.set_unusable_password()
-        user.save()
+    
+    
+# @swagger_auto_schema(method='post', request_body=AppleLoginSerializer, tags=['Auth'])
+# @api_view(["POST"])
+# def apple_login(request):
+#     serializer = AppleLoginSerializer(data=request.data)
+#     serializer.is_valid(raise_exception=True)
+#     id_token = serializer.validated_data["id_token"]
 
-    # Generate JWT tokens
-    tokens = get_tokens_for_user(user)
+#     try:
+#         decoded = verify_apple_token(id_token)
+#     except Exception as e:
+#         return Response(
+#             {"detail": f"Invalid id_token: {str(e)}"},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
 
-    return Response({
-        "message": "Login successful",
-        **tokens,
-        "data": UserSerializer(user, context={'request': request}).data
-    }, status=status.HTTP_200_OK)
+#     # Extract user info
+#     apple_sub = decoded.get("sub")
+#     email = decoded.get("email")
+#     name = decoded.get("name")
+
+#     # Fallbacks if missing
+#     if not email:
+#         email = f"{apple_sub}@appleuser.com"
+#     if not name:
+#         name = f"AppleUser-{uuid.uuid4().hex[:6]}"
+
+#     # Create or get user
+#     user, created = User.objects.get_or_create(
+#         email=email,
+#         defaults={"name": name}
+#     )
+    
+#     if created:
+#         user.apple_id = apple_sub
+#         user.set_unusable_password()
+#         user.save()
+
+#     # Generate JWT tokens
+#     tokens = get_tokens_for_user(user)
+
+#     return Response({
+#         "message": "Login successful",
+#         **tokens,
+#         "data": UserSerializer(user, context={'request': request}).data
+#     }, status=status.HTTP_200_OK)
