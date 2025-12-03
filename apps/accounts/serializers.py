@@ -1,10 +1,11 @@
+import time
+import datetime
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from apps.accounts.models import User, Profile
 from apps.host.models import ChargingStation
 from apps.host.serializers import ChargingStationSerializer
-import datetime
 
 
 
@@ -201,20 +202,34 @@ class GoogleLoginSerializer(serializers.Serializer):
         picture = self.validated_data.get("picture", "")
         role = self.validated_data.get("role")
 
-        user, created = User.objects.get_or_create(
+        # 🚫 Host Google/Apple login disallowed
+        if role == "host":
+            raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
+
+        # ✔ Try to get user
+        try:
+            user = User.objects.get(email=email)
+
+            # যদি পুরনো user host হয় → block
+            if user.role == "host":
+                raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
+
+            return user, False
+
+        except User.DoesNotExist:
+            pass
+
+        # ✔ Create new user safely — phone must be unique → give temporary placeholder
+        user = User.objects.create(
             email=email,
-            defaults={
-                'full_name': full_name,
-                'picture': picture,
-                'role': role
-            }
+            full_name=full_name,
+            picture=picture,
+            role="user", 
+            phone=f"auto-{int(time.time())}" 
         )
 
-        # ❌ If existing user is HOST → block login
-        if user.role == "host":
-            raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
-        
-        return user, created
+        return user, True
+
     
     
 class AppleLoginSerializer(serializers.Serializer):
