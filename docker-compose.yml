@@ -1,4 +1,17 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: django_db
+    restart: always
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - julian_network
+
   django_app:
     image: sadiyairin/hhm-backend:latest
     container_name: django_app
@@ -6,9 +19,13 @@ services:
     expose:
       - "8005"
     env_file: .env
+    depends_on:
+      - db
     volumes:
-      - ./static:/app/static # জ্যাঙ্গো স্ট্যাটিক ফাইল এখানে জমা করবে
-      - ./media:/app/media # ইউজার আপলোড করা ছবি বা ফাইলের জন্য (যদি থাকে)
+      - ./static:/app/static
+      - ./media:/app/media
+    networks:
+      - julian_network
 
   nginx:
     image: nginx:latest
@@ -20,7 +37,16 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./static:/app/static:ro # এনজিনেক্স এখান থেকে অ্যাডমিন সিএসএস পড়বে
-      - ./media:/app/media:ro # মিডিয়া ফাইল দেখানোর জন্য
+      - ./static:/app/static:ro
+      - ./media:/app/media:ro
     depends_on:
       - django_app
+    networks:
+      - julian_network
+
+networks:
+  julian_network:
+    driver: bridge
+
+volumes:
+  postgres_data: # এই ভলিউমটি আপনার ডেটাবেস পারসিস্টেন্ট রাখবে
