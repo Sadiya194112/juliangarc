@@ -25,7 +25,7 @@ services:
       - ./static:/app/static
       - ./media:/app/media
     networks:
-      - julian_network
+      - julian_network #Docker network for inter-container communication
 
   nginx:
     image: nginx:latest
