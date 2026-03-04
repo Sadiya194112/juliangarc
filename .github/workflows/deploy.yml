@@ -1,4 +1,4 @@
-name: Deploy 1ezybuy to VPS
+name: Deploy juliangarc11 to VPS
 
 on:
     push:
@@ -27,7 +27,7 @@ jobs:
                   context: .
                   push: true
                   no-cache: true # এটি নিশ্চিত করবে আপনার নতুন Uvicorn সেটিংস ইমেজে যাবে
-                  tags: ${{ secrets.DOCKERHUB_USERNAME }}/hhm-backend:latest
+                  tags: ${{ secrets.DOCKERHUB_USERNAME }}/juliangarc11:latest
 
             # ৩. VPS-এ লগইন করে Docker Compose এর মাধ্যমে আপডেট করা
             - name: Deploy to VPS via SSH

@@ -13,7 +13,7 @@ services:
       - julian_network
 
   django_app:
-    image: sadiyairin/hhm-backend:latest
+    image: sadiyairin/juliangarc11:latest
     container_name: django_app
     restart: always
     expose:
