@@ -1,12 +1,12 @@
-import time
 import datetime
-from rest_framework import serializers
+import time
+
 from django.contrib.auth import authenticate
-from django.contrib.auth.hashers import make_password
-from apps.accounts.models import User, Profile
+from rest_framework import serializers
+
+from apps.accounts.models import Profile, User
 from apps.host.models import ChargingStation
 from apps.host.serializers import ChargingStationSerializer
-
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -14,130 +14,176 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True, min_length=8)
     role = serializers.ChoiceField(choices=User.USER_TYPES)
     terms_privacy = serializers.BooleanField(required=True)
+    # allow phone to be optional during signup
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     # Host-specific fields for ChargingStation
     station_name = serializers.CharField(max_length=200, required=False)
     location_area = serializers.CharField(max_length=255, required=False)
     address = serializers.CharField(required=False, allow_blank=True)
-    status = serializers.ChoiceField(choices=ChargingStation.STATION_STATUS_CHOICES, default='OP', required=False)
+    status = serializers.ChoiceField(
+        choices=ChargingStation.STATION_STATUS_CHOICES, default="OP", required=False
+    )
     opening_time = serializers.TimeField(required=False, default=datetime.time(9, 0))
     closing_time = serializers.TimeField(required=False, default=datetime.time(22, 0))
     latitude = serializers.FloatField(required=False, default=0.0)
     longitude = serializers.FloatField(required=False, default=0.0)
-    google_place_id = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    google_place_id = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
     image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = User
         fields = [
-            'full_name', 'email', 'phone', 'role',
-            'password', 'confirm_password', 'terms_privacy',
-            'station_name', 'location_area', 'address', 'status',
-            'opening_time', 'closing_time', 'latitude', 'longitude',
-            'google_place_id', 'image'
+            "full_name",
+            "email",
+            "phone",
+            "role",
+            "password",
+            "confirm_password",
+            "terms_privacy",
+            "station_name",
+            "location_area",
+            "address",
+            "status",
+            "opening_time",
+            "closing_time",
+            "latitude",
+            "longitude",
+            "google_place_id",
+            "image",
         ]
 
     def validate_terms_privacy(self, value):
         if not value:
-            raise serializers.ValidationError("You must agree to the Terms & Privacy Policy to continue.")
+            raise serializers.ValidationError(
+                "You must agree to the Terms & Privacy Policy to continue."
+            )
         return value
 
     def validate(self, attrs):
-        if attrs['password'] != attrs['confirm_password']:
+        if attrs["password"] != attrs["confirm_password"]:
             raise serializers.ValidationError("Passwords don't match")
 
-        if attrs.get('role') == 'host':
-            required_fields = ['station_name', 'location_area', 'latitude', 'longitude']
+        if attrs.get("role") == "host":
+            required_fields = ["station_name", "location_area", "latitude", "longitude"]
             for field in required_fields:
                 if not attrs.get(field):
-                    raise serializers.ValidationError({field: f"{field.replace('_', ' ').capitalize()} is required for hosts."})
+                    raise serializers.ValidationError(
+                        {
+                            field: f"{field.replace('_', ' ').capitalize()} is required for hosts."
+                        }
+                    )
 
         return attrs
 
     def create(self, validated_data):
         # Extract station-related fields
-        station_data = {key: validated_data.pop(key, None) for key in [
-            'station_name', 'location_area', 'address', 'status',
-            'opening_time', 'closing_time', 'latitude', 'longitude',
-            'google_place_id', 'image'
-        ]}
+        station_data = {
+            key: validated_data.pop(key, None)
+            for key in [
+                "station_name",
+                "location_area",
+                "address",
+                "status",
+                "opening_time",
+                "closing_time",
+                "latitude",
+                "longitude",
+                "google_place_id",
+                "image",
+            ]
+        }
 
-        validated_data.pop('confirm_password')
-        password = validated_data.pop('password')
+        validated_data.pop("confirm_password")
+        password = validated_data.pop("password")
 
-        # Create user
+        # Create user; if phone was blank convert to None to satisfy model
+        if not validated_data.get("phone"):
+            validated_data["phone"] = None
         user = User.objects.create_user(**validated_data)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
         user.save()
 
         # Role-specific profile
-        if user.role == 'user':
+        if user.role == "user":
             Profile.objects.create(user=user)
-        elif user.role == 'host':
+        elif user.role == "host":
             ChargingStation.objects.create(host=user, **station_data)
 
         return user
-    
+
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
+        email = data.get("email", "").strip().lower()
+        password = data.get("password", "")
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"error": "User with this email doesn't exist."})
-
+            raise serializers.ValidationError(
+                {"error": "User with this email doesn't exist."}
+            )
 
         auth_user = authenticate(
-            request=self.context.get('request'),
-            username=email,   
-            password=password
+            request=self.context.get("request"), username=email, password=password
         )
 
         if auth_user is None:
             raise serializers.ValidationError({"error": "Invalid email or password."})
 
-        data['user'] = auth_user
+        data["user"] = auth_user
         return data
 
 
-
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='get_role_display', read_only=True)
-    
+    role = serializers.CharField(source="get_role_display", read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'phone', 'role', 'picture', 'is_online', 'last_seen', 'is_active']
-    
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "phone",
+            "role",
+            "picture",
+            "is_online",
+            "last_seen",
+            "is_active",
+        ]
 
 
 class ForgetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    
-    
+
 
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=4)
-    
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     charging_station = ChargingStationSerializer(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'phone', 'picture', 'charging_station']
+        fields = ["id", "full_name", "email", "phone", "picture", "charging_station"]
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        
-        if instance.role == 'host':
-            representation['charging_station'] = ChargingStationSerializer(instance.charging_station).data
-        
+
+        if instance.role == "host":
+            representation["charging_station"] = ChargingStationSerializer(
+                instance.charging_station
+            ).data
+
         return representation
 
 
@@ -147,8 +193,8 @@ class ResetPasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(min_length=8, write_only=True)
 
     def validate(self, data):
-        email = data["email"].lower()  
-        data["email"] = email 
+        email = data["email"].lower()
+        data["email"] = email
         try:
             user = User.objects.get(email=data["email"])
         except User.DoesNotExist:
@@ -158,25 +204,26 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError({"otp": "OTP verification required."})
 
         if data["password"] != data["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
 
         return data
 
     def save(self, **kwargs):
         user = User.objects.get(email=self.validated_data["email"])
         user.set_password(self.validated_data["password"])
-        user.otp = None 
+        user.otp = None
         user.otp_expiry = None
-        user.is_verified = False 
+        user.is_verified = False
         user.save()
         return user
-
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['full_name', 'phone', 'picture']
+        fields = ["full_name", "phone", "picture"]
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -185,11 +232,11 @@ class ChangePasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(required=True, min_length=8)
 
     def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
+        if data["new_password"] != data["confirm_password"]:
             raise serializers.ValidationError("New passwords do not match.")
         return data
-    
-    
+
+
 class GoogleLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     full_name = serializers.CharField()
@@ -204,7 +251,9 @@ class GoogleLoginSerializer(serializers.Serializer):
 
         # 🚫 Host Google/Apple login disallowed
         if role == "host":
-            raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
+            raise serializers.ValidationError(
+                "Hosts cannot login using Google or Apple."
+            )
 
         # ✔ Try to get user
         try:
@@ -212,7 +261,9 @@ class GoogleLoginSerializer(serializers.Serializer):
 
             # যদি পুরনো user host হয় → block
             if user.role == "host":
-                raise serializers.ValidationError("Hosts cannot login using Google or Apple.")
+                raise serializers.ValidationError(
+                    "Hosts cannot login using Google or Apple."
+                )
 
             return user, False
 
@@ -224,13 +275,12 @@ class GoogleLoginSerializer(serializers.Serializer):
             email=email,
             full_name=full_name,
             picture=picture,
-            role="user", 
-            phone=f"auto-{int(time.time())}" 
+            role="user",
+            phone=f"auto-{int(time.time())}",
         )
 
         return user, True
 
-    
-    
+
 class AppleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True, write_only=True)

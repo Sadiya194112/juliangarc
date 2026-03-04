@@ -1,26 +1,29 @@
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import PermissionsMixin
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
-from django.core.validators import RegexValidator
-from django.contrib.auth.models import PermissionsMixin
-from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, full_name, email, phone, password=None, **extra_fields):
+    def create_user(self, full_name, email, phone=None, password=None, **extra_fields):
         if not full_name:
             raise ValueError("The full name must be set.")
         if not email:
             raise ValueError("The email must be set.")
-        if not phone:
-            raise ValueError("The phone must be set.")
+        # phone is optional now; allow None or blank. If provided, it will be saved.
+        # Hosts still need a phone for contact but validation should occur elsewhere if desired.
 
         email = self.normalize_email(email)
         user = self.model(full_name=full_name, email=email, phone=phone, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, full_name, email, phone, password=None, **extra_fields):
+    def create_superuser(
+        self, full_name, email, phone=None, password=None, **extra_fields
+    ):
         extra_fields.setdefault("role", User.USER_TYPES[2][0])
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -49,6 +52,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(
         max_length=15,
         unique=True,
+        blank=True,
+        null=True,
         validators=[
             RegexValidator(
                 regex=r"^\+?1?\d{9,15}$",
@@ -78,7 +83,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["full_name", "phone"]
+    # phone is no longer mandatory at registration, drop from REQUIRED_FIELDS
+    REQUIRED_FIELDS = ["full_name"]
 
     def is_otp_expired(self):
         return not self.otp_expiry or timezone.now() > self.otp_expiry
